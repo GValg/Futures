@@ -1,0 +1,536 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="theme-color" content="#020810">
+<title>Futures Calc</title>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;600&family=Syne:wght@300;600;800&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #020810;
+    --bg2: #070f1c;
+    --bg3: #060d18;
+    --border: #111d2e;
+    --border2: #1a2a3a;
+    --text: #e0e8ff;
+    --muted: #6a9bbf;
+    --dim: #1a2a3a;
+    --green: #00d4aa;
+    --red: #ff4d6d;
+    --mono: 'IBM Plex Mono', monospace;
+    --display: 'Syne', sans-serif;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: var(--mono);
+    min-height: 100vh;
+    padding: 12px 12px 24px;
+    max-width: 480px;
+    margin: 0 auto;
+  }
+
+  /* Header */
+  .header { margin-bottom: 10px; }
+  .header-badge {
+    display: flex; align-items: center; gap: 6px; margin-bottom: 2px;
+  }
+  .dot {
+    width: 5px; height: 5px; border-radius: 50%;
+    background: var(--green); box-shadow: 0 0 8px var(--green);
+    animation: pulse 2s infinite;
+  }
+  @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.4} }
+  .badge-text { color: var(--green); font-size: 9px; letter-spacing: 0.2em; }
+  h1 {
+    font-family: var(--display); font-size: 20px; font-weight: 800;
+    color: var(--text); letter-spacing: -0.03em; line-height: 1;
+  }
+  h1 span { color: var(--green); }
+
+  /* Side toggle */
+  .toggle {
+    display: flex; background: var(--bg3); border: 1px solid var(--border);
+    border-radius: 8px; padding: 3px; margin-bottom: 10px;
+  }
+  .toggle-btn {
+    flex: 1; padding: 7px; border: none; border-radius: 6px;
+    cursor: pointer; font-family: var(--mono); font-size: 11px;
+    font-weight: 600; letter-spacing: 0.1em;
+    background: transparent; color: var(--muted);
+    transition: all 0.2s; border: 1px solid transparent;
+  }
+  .toggle-btn.active-long {
+    background: rgba(0,212,170,0.1); color: var(--green);
+    border-color: rgba(0,212,170,0.25);
+  }
+  .toggle-btn.active-short {
+    background: rgba(255,77,109,0.1); color: var(--red);
+    border-color: rgba(255,77,109,0.25);
+  }
+
+  /* Cards */
+  .card {
+    background: var(--bg2); border: 1px solid var(--border);
+    border-radius: 10px; padding: 10px 12px; margin-bottom: 8px;
+  }
+  .card-label {
+    font-size: 8px; letter-spacing: 0.18em; color: var(--muted);
+    text-transform: uppercase; margin-bottom: 8px;
+  }
+
+  /* Inputs */
+  .grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+  .field { margin-bottom: 8px; }
+  .field:last-child { margin-bottom: 0; }
+  .field label {
+    display: block; font-size: 8px; letter-spacing: 0.12em;
+    color: var(--muted); text-transform: uppercase; margin-bottom: 4px;
+  }
+  .input-wrap { position: relative; display: flex; align-items: center; }
+  .input-wrap span {
+    position: absolute; color: var(--muted); font-size: 12px;
+    pointer-events: none; z-index: 1;
+  }
+  .input-wrap span.pre { left: 8px; }
+  .input-wrap span.suf { right: 8px; }
+  input[type=number] {
+    width: 100%; background: var(--bg);
+    border: 1px solid var(--border2); border-radius: 6px;
+    color: var(--text); font-size: 13px; font-family: var(--mono);
+    padding: 7px 8px; outline: none;
+    transition: border-color 0.2s; appearance: none;
+    -moz-appearance: textfield;
+  }
+  input[type=number]::-webkit-inner-spin-button,
+  input[type=number]::-webkit-outer-spin-button { -webkit-appearance: none; }
+  .has-pre input { padding-left: 18px; }
+  .has-suf input { padding-right: 24px; }
+  input:focus { border-color: var(--green); }
+
+  /* Results */
+  .result-row {
+    display: flex; justify-content: space-between; align-items: baseline;
+    padding: 5px 0; border-bottom: 1px solid var(--border);
+  }
+  .result-row:last-child { border-bottom: none; }
+  .result-label {
+    font-size: 9px; letter-spacing: 0.06em; color: var(--muted);
+    text-transform: uppercase;
+  }
+  .result-val { font-size: 13px; font-weight: 600; color: var(--text); }
+  .result-val.green { color: var(--green); }
+  .result-val.red { color: var(--red); }
+  .result-sub { font-size: 8px; color: var(--dim); margin-top: 1px; text-align: right; }
+
+  /* Liq card */
+  .liq-card { transition: border-color 0.3s, background 0.3s; }
+  .liq-card.danger {
+    background: #1a0810; border-color: rgba(255,77,109,0.3);
+  }
+  .liq-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px; }
+  .liq-badge {
+    font-size: 8px; padding: 2px 7px; border-radius: 4px;
+    font-weight: 600; letter-spacing: 0.08em;
+  }
+  .liq-badge.safe {
+    background: rgba(0,212,170,0.1); color: var(--green);
+    border: 1px solid rgba(0,212,170,0.25);
+  }
+  .liq-badge.danger {
+    background: rgba(255,77,109,0.15); color: var(--red);
+    border: 1px solid rgba(255,77,109,0.35);
+  }
+  .warn-box {
+    margin-top: 6px; padding: 7px 10px;
+    background: rgba(255,77,109,0.08); border-radius: 6px;
+    border: 1px solid rgba(255,77,109,0.2);
+    font-size: 10px; color: var(--red); line-height: 1.4;
+    display: none;
+  }
+  .warn-box.show { display: block; }
+
+  /* RR bar */
+  .rr-bar-wrap { margin-top: 8px; }
+  .rr-bar-label { display: flex; justify-content: space-between; font-size: 8px; color: var(--muted); margin-bottom: 4px; }
+  .rr-track { height: 3px; background: var(--border2); border-radius: 2px; position: relative; }
+  .rr-fill { height: 100%; border-radius: 2px; background: var(--green); transition: width 0.3s; }
+
+  .footer { text-align: center; margin-top: 12px; font-size: 8px; color: var(--dim); letter-spacing: 0.1em; }
+</style>
+</head>
+<body>
+
+<div class="header">
+  <div class="header-badge">
+    <div class="dot"></div>
+    <span class="badge-text">BINANCE FUTURES</span>
+  </div>
+  <h1>Trade <span>Calc</span></h1>
+</div>
+
+<!-- Side Toggle -->
+<div class="toggle">
+  <button class="toggle-btn active-long" id="btn-long" onclick="setSide('LONG')">▲ LONG</button>
+  <button class="toggle-btn" id="btn-short" onclick="setSide('SHORT')">▼ SHORT</button>
+</div>
+
+<!-- Account & Risk -->
+<div class="card">
+  <div class="card-label">Account & Risk</div>
+  <div class="grid2">
+    <div class="field">
+      <label>Account Size</label>
+      <div class="input-wrap has-pre">
+        <span class="pre">$</span>
+        <input type="number" id="account" value="1000" step="100" oninput="calc()">
+      </div>
+    </div>
+    <div class="field">
+      <label>Risk %</label>
+      <div class="input-wrap has-suf">
+        <input type="number" id="riskPct" value="1" step="0.1" min="0.1" max="100" oninput="calc()">
+        <span class="suf">%</span>
+      </div>
+    </div>
+  </div>
+  <div class="grid2">
+    <div class="field">
+      <label>Leverage</label>
+      <div class="input-wrap has-suf">
+        <input type="number" id="leverage" value="10" step="1" min="1" max="125" oninput="calc()">
+        <span class="suf">×</span>
+      </div>
+    </div>
+    <div class="field">
+      <label>Maint. Margin</label>
+      <div class="input-wrap has-suf">
+        <input type="number" id="mmr" value="0.5" step="0.1" min="0" max="10" oninput="calc()">
+        <span class="suf">%</span>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Price Levels -->
+<div class="card">
+  <div class="card-label">Price Levels</div>
+  <div class="field">
+    <label>Entry Price</label>
+    <div class="input-wrap has-pre">
+      <span class="pre">$</span>
+      <input type="number" id="entry" value="50000" step="100" oninput="calc()">
+    </div>
+  </div>
+  <div class="field">
+    <label id="sl-label">Stop Loss (below entry)</label>
+    <div class="input-wrap has-pre">
+      <span class="pre">$</span>
+      <input type="number" id="sl" value="49000" step="100" oninput="calc()">
+    </div>
+  </div>
+  <div class="field">
+    <label>Risk / Reward</label>
+    <div class="input-wrap has-suf">
+      <input type="number" id="rr" value="3" step="0.5" min="0.5" oninput="calc()">
+      <span class="suf">: 1</span>
+    </div>
+  </div>
+  <div class="result-sub" id="sl-warn" style="display:none;text-align:left;color:var(--red);margin-top:6px;">⚠ Stop loss must be below entry for LONG.</div>
+</div>
+
+<!-- Fees -->
+<div class="card">
+  <div class="card-label">Fees</div>
+  <div class="field">
+    <label>Exchange</label>
+    <select id="exchange" onchange="calc()" style="width:100%;background:var(--bg);border:1px solid var(--border2);border-radius:6px;color:var(--text);font-size:13px;font-family:var(--mono);padding:7px 8px;outline:none;">
+      <option value="okx">OKX (0.02% / 0.05%)</option>
+      <option value="kraken">Kraken (0.02% / 0.05%)</option>
+    </select>
+  </div>
+  <div class="grid2">
+    <div class="field">
+      <label>Entry Order</label>
+      <select id="entryType" onchange="calc()" style="width:100%;background:var(--bg);border:1px solid var(--border2);border-radius:6px;color:var(--text);font-size:13px;font-family:var(--mono);padding:7px 8px;outline:none;">
+        <option value="taker">Taker (market)</option>
+        <option value="maker">Maker (limit)</option>
+      </select>
+    </div>
+    <div class="field">
+      <label>Exit Order</label>
+      <select id="exitType" onchange="calc()" style="width:100%;background:var(--bg);border:1px solid var(--border2);border-radius:6px;color:var(--text);font-size:13px;font-family:var(--mono);padding:7px 8px;outline:none;">
+        <option value="taker">Taker (market)</option>
+        <option value="maker">Maker (limit)</option>
+      </select>
+    </div>
+  </div>
+  <div class="grid2">
+    <div class="field">
+      <label>Funding Rate (8h)</label>
+      <div class="input-wrap has-suf">
+        <input type="number" id="fundingRate" value="0.01" step="0.005" oninput="calc()">
+        <span class="suf">%</span>
+      </div>
+    </div>
+    <div class="field">
+      <label>Est. Hold Time</label>
+      <div class="input-wrap has-suf">
+        <input type="number" id="holdHours" value="0" step="1" min="0" oninput="calc()">
+        <span class="suf">hrs</span>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Results -->
+<div class="card">
+  <div class="card-label">Results</div>
+  <div class="result-row">
+    <span class="result-label">Risk Amount</span>
+    <div><div class="result-val" id="r-risk">—</div></div>
+  </div>
+  <div class="result-row">
+    <span class="result-label">Position Size</span>
+    <div>
+      <div class="result-val" id="r-pos">—</div>
+      <div class="result-sub">notional exposure</div>
+    </div>
+  </div>
+  <div class="result-row">
+    <span class="result-label">Margin Required</span>
+    <div><div class="result-val green" id="r-margin">—</div></div>
+  </div>
+  <div class="result-row">
+    <span class="result-label">SL Distance</span>
+    <div>
+      <div class="result-val" id="r-sldist">—</div>
+      <div class="result-sub" id="r-sldist-sub">—</div>
+    </div>
+  </div>
+  <div class="result-row">
+    <span class="result-label">Take Profit</span>
+    <div>
+      <div class="result-val green" id="r-tp">—</div>
+      <div class="result-sub" id="r-tp-sub">—</div>
+    </div>
+  </div>
+  <div class="result-row">
+    <span class="result-label">Profit at TP</span>
+    <div><div class="result-val green" id="r-profit">—</div></div>
+  </div>
+  <div class="result-row">
+    <span class="result-label" id="r-fees-label">Fees</span>
+    <div>
+      <div class="result-val red" id="r-fees">—</div>
+      <div class="result-sub" id="r-fees-sub">entry + exit</div>
+    </div>
+  </div>
+  <div class="result-row">
+    <span class="result-label">Funding Cost</span>
+    <div>
+      <div class="result-val" id="r-funding">—</div>
+      <div class="result-sub" id="r-funding-sub">—</div>
+    </div>
+  </div>
+  <div class="result-row">
+    <span class="result-label">Net Profit</span>
+    <div><div class="result-val green" id="r-net">—</div></div>
+  </div>
+
+  <!-- RR Bar -->
+  <div class="rr-bar-wrap">
+    <div class="rr-bar-label">
+      <span>RISK</span>
+      <span id="rr-display">RR 3:1</span>
+      <span>REWARD</span>
+    </div>
+    <div class="rr-track">
+      <div class="rr-fill" id="rr-fill" style="width:75%"></div>
+    </div>
+  </div>
+</div>
+
+<!-- Breakeven -->
+<div class="card">
+  <div class="card-label">Breakeven Win Rate</div>
+  <div class="result-row">
+    <span class="result-label">Min wins needed</span>
+    <div><div class="result-val green" id="r-breakeven">—</div></div>
+  </div>
+  <div class="result-row">
+    <span class="result-label">Expectancy / trade</span>
+    <div><div class="result-val" id="r-expect">—</div></div>
+  </div>
+  <div style="margin-top:6px;">
+    <div style="display:flex;justify-content:space-between;font-size:8px;color:var(--muted);margin-bottom:3px;">
+      <span>0%</span><span id="be-display">—</span><span>100%</span>
+    </div>
+    <div style="height:3px;background:var(--border2);border-radius:2px;">
+      <div id="be-fill" style="height:100%;border-radius:2px;background:var(--green);transition:width 0.3s;width:25%"></div>
+    </div>
+  </div>
+</div>
+
+<!-- Liquidation -->
+<div class="card liq-card" id="liq-card">
+  <div class="liq-header">
+    <div class="card-label" style="margin-bottom:0">Liquidation</div>
+    <span class="liq-badge safe" id="liq-badge">✓ SL SAFE</span>
+  </div>
+  <div class="result-row">
+    <span class="result-label">Liquidation Price</span>
+    <div><div class="result-val" id="r-liq">—</div></div>
+  </div>
+  <div class="result-row">
+    <span class="result-label">Distance to Liq.</span>
+    <div>
+      <div class="result-val" id="r-liqdist">—</div>
+      <div class="result-sub" id="r-liqdist-sub">—</div>
+    </div>
+  </div>
+  <div class="warn-box" id="warn-box">
+    ⚠ Stop loss is beyond liquidation price — you'll be liquidated before SL triggers. Reduce leverage or move SL closer to entry.
+  </div>
+  <div class="result-sub" style="text-align:left;margin-top:6px;">Est. only — ignores fees and tiered MM brackets. Check your exchange's actual MMR for this position size.</div>
+</div>
+
+<div class="footer">FOR EDUCATIONAL USE ONLY · NOT FINANCIAL ADVICE</div>
+
+<script>
+  let side = 'LONG';
+
+  function setSide(s) {
+    side = s;
+    document.getElementById('btn-long').className = 'toggle-btn' + (s === 'LONG' ? ' active-long' : '');
+    document.getElementById('btn-short').className = 'toggle-btn' + (s === 'SHORT' ? ' active-short' : '');
+    document.getElementById('sl-label').textContent = `Stop Loss (${s === 'LONG' ? 'below' : 'above'} entry)`;
+    document.getElementById('sl-warn').textContent = `⚠ Stop loss must be ${s === 'LONG' ? 'below' : 'above'} entry for ${s}.`;
+    calc();
+  }
+
+  function fmt(n, d = 2) {
+    if (isNaN(n) || !isFinite(n)) return '—';
+    return Number(n).toLocaleString('en-US', { minimumFractionDigits: d, maximumFractionDigits: d });
+  }
+
+  function calc() {
+    const account = parseFloat(document.getElementById('account').value) || 0;
+    const riskPct = parseFloat(document.getElementById('riskPct').value) / 100 || 0;
+    const leverage = parseFloat(document.getElementById('leverage').value) || 1;
+    const entry = parseFloat(document.getElementById('entry').value) || 0;
+    const sl = parseFloat(document.getElementById('sl').value) || 0;
+    const rr = parseFloat(document.getElementById('rr').value) || 1;
+
+    const slWarn = document.getElementById('sl-warn');
+    const invalid = entry <= 0 || sl <= 0 || (side === 'LONG' ? sl >= entry : sl <= entry);
+    const resultIds = ['r-risk','r-pos','r-margin','r-sldist','r-tp','r-profit','r-fees','r-funding','r-net','r-breakeven','r-expect','r-liq','r-liqdist'];
+    if (invalid) {
+      slWarn.style.display = 'block';
+      resultIds.forEach(id => document.getElementById(id).textContent = '—');
+      ['r-sldist-sub','r-tp-sub','r-fees-sub','r-funding-sub','r-liqdist-sub','be-display'].forEach(id => document.getElementById(id).textContent = '—');
+      return;
+    } else {
+      slWarn.style.display = 'none';
+    }
+
+    const riskDollar = account * riskPct;
+    const slDist = Math.abs(entry - sl);
+    const slPct = slDist / entry;
+    const positionSize = slPct > 0 ? riskDollar / slPct : 0;
+    const marginRequired = positionSize / leverage;
+    const tp = side === 'LONG' ? entry + slDist * rr : entry - slDist * rr;
+    const tpPct = (Math.abs(tp - entry) / entry) * 100;
+    const profitDollar = riskDollar * rr;
+
+    const mmr = parseFloat(document.getElementById('mmr').value) / 100 || 0;
+    const liqMoveFrac = Math.max(1 / leverage - mmr, 0);
+    const liq = side === 'LONG' ? entry * (1 - liqMoveFrac) : entry * (1 + liqMoveFrac);
+    const liqDist = Math.abs(entry - liq);
+    const liqDistPct = (liqDist / entry) * 100;
+    const slSafe = side === 'LONG' ? sl > liq : sl < liq;
+
+    document.getElementById('r-risk').textContent = `$${fmt(riskDollar)}`;
+    document.getElementById('r-pos').textContent = `$${fmt(positionSize)}`;
+    document.getElementById('r-margin').textContent = `$${fmt(marginRequired)}`;
+    document.getElementById('r-sldist').textContent = `${fmt(slPct * 100)}%`;
+    document.getElementById('r-sldist-sub').textContent = `$${fmt(slDist)} per unit`;
+    document.getElementById('r-tp').textContent = `$${fmt(tp, 0)}`;
+    document.getElementById('r-tp-sub').textContent = `+${fmt(tpPct)}% from entry`;
+    document.getElementById('r-profit').textContent = `$${fmt(profitDollar)}`;
+
+    // Fees: base-tier (VIP0/regular, no volume discounts) maker/taker rates
+    const FEE_RATES = {
+      okx:    { maker: 0.0002, taker: 0.0005 },
+      kraken: { maker: 0.0002, taker: 0.0005 }
+    };
+    const exchange = document.getElementById('exchange').value;
+    const entryType = document.getElementById('entryType').value;
+    const exitType = document.getElementById('exitType').value;
+    const entryFeeRate = FEE_RATES[exchange][entryType];
+    const exitFeeRate = FEE_RATES[exchange][exitType];
+    const fees = positionSize * entryFeeRate + positionSize * exitFeeRate;
+    document.getElementById('r-fees-label').textContent = `Fees (${fmt(entryFeeRate*100,2)}% + ${fmt(exitFeeRate*100,2)}%)`;
+    document.getElementById('r-fees').textContent = `-$${fmt(fees)}`;
+
+    // Funding: charged every 8h; positive rate = longs pay shorts
+    const fundingRate = parseFloat(document.getElementById('fundingRate').value) / 100 || 0;
+    const holdHours = parseFloat(document.getElementById('holdHours').value) || 0;
+    const intervals = Math.floor(holdHours / 8);
+    const fundingCost = (side === 'LONG' ? 1 : -1) * positionSize * fundingRate * intervals;
+    document.getElementById('r-funding').textContent = `${fundingCost >= 0 ? '-' : '+'}$${fmt(Math.abs(fundingCost))}`;
+    document.getElementById('r-funding').className = 'result-val ' + (fundingCost > 0 ? 'red' : (fundingCost < 0 ? 'green' : ''));
+    document.getElementById('r-funding-sub').textContent = `${intervals} interval${intervals === 1 ? '' : 's'} @ ${fmt(fundingRate*100,3)}%`;
+
+    const netProfit = profitDollar - fees - fundingCost;
+    document.getElementById('r-net').textContent = `$${fmt(netProfit)}`;
+    document.getElementById('r-net').className = 'result-val ' + (netProfit >= 0 ? 'green' : 'red');
+
+    // Breakeven win rate = 1 / (1 + RR)
+    const breakeven = (1 / (1 + rr)) * 100;
+    const expectancy = (0.5 * riskDollar * rr) - (0.5 * riskDollar); // at 50% win rate
+    document.getElementById('r-breakeven').textContent = `${fmt(breakeven, 1)}%`;
+    document.getElementById('r-expect').textContent = `$${fmt(expectancy)} at 50% WR`;
+    document.getElementById('r-expect').className = 'result-val ' + (expectancy >= 0 ? 'green' : 'red');
+    document.getElementById('be-display').textContent = `MIN ${fmt(breakeven, 1)}%`;
+    document.getElementById('be-fill').style.width = Math.min(breakeven, 99) + '%';
+
+    // RR bar
+    const rrFillPct = Math.min((rr / (rr + 1)) * 100, 95);
+    document.getElementById('rr-fill').style.width = rrFillPct + '%';
+    document.getElementById('rr-display').textContent = `RR ${fmt(rr, 1)}:1`;
+
+    // Liquidation
+    document.getElementById('r-liq').textContent = `$${fmt(liq, 0)}`;
+    document.getElementById('r-liq').className = 'result-val' + (slSafe ? '' : ' red');
+    document.getElementById('r-liqdist').textContent = `${fmt(liqDistPct)}%`;
+    document.getElementById('r-liqdist-sub').textContent = `$${fmt(liqDist)} from entry`;
+
+    const liqCard = document.getElementById('liq-card');
+    const liqBadge = document.getElementById('liq-badge');
+    const warnBox = document.getElementById('warn-box');
+
+    if (slSafe) {
+      liqCard.classList.remove('danger');
+      liqBadge.className = 'liq-badge safe';
+      liqBadge.textContent = '✓ SL SAFE';
+      warnBox.classList.remove('show');
+    } else {
+      liqCard.classList.add('danger');
+      liqBadge.className = 'liq-badge danger';
+      liqBadge.textContent = '⚠ SL TOO CLOSE';
+      warnBox.classList.add('show');
+    }
+  }
+
+  calc();
+</script>
+</body>
+</html>
