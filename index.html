@@ -171,7 +171,8 @@
 <div class="header">
   <div class="header-badge">
     <div class="dot"></div>
-    <span class="badge-text">BINANCE FUTURES</span>
+    <span class="badge-text">MY.OKX / KRAKEN PRO</span>
+    <span class="badge-text" style="color:var(--muted);opacity:0.7;">V3.0</span>
   </div>
   <h1>Trade <span>Calc</span></h1>
 </div>
@@ -223,7 +224,10 @@
 <div class="card">
   <div class="card-label">Price Levels</div>
   <div class="field">
-    <label>Entry Price</label>
+    <label style="display:flex;justify-content:space-between;align-items:center;">
+      <span>Entry Price</span>
+      <button onclick="fetchBTC()" id="btc-btn" style="background:rgba(0,212,170,0.1);color:var(--green);border:1px solid rgba(0,212,170,0.25);border-radius:4px;font-size:8px;letter-spacing:0.08em;padding:3px 7px;font-family:var(--mono);cursor:pointer;">⟳ LIVE BTC</button>
+    </label>
     <div class="input-wrap has-pre">
       <span class="pre">$</span>
       <input type="number" id="entry" value="50000" step="100" oninput="calc()">
@@ -406,6 +410,23 @@
 
 <script>
   let side = 'LONG';
+
+  async function fetchBTC() {
+    const btn = document.getElementById('btc-btn');
+    const original = btn.textContent;
+    btn.textContent = '...';
+    try {
+      const res = await fetch('https://api.coingecko.com/api/v3/simple/price?ids=bitcoin&vs_currencies=usd');
+      const data = await res.json();
+      const price = data.bitcoin.usd;
+      document.getElementById('entry').value = price;
+      btn.textContent = '✓ ' + fmt(price, 0);
+      calc();
+    } catch (e) {
+      btn.textContent = '✗ failed';
+    }
+    setTimeout(() => { btn.textContent = original; }, 2500);
+  }
 
   function setSide(s) {
     side = s;
